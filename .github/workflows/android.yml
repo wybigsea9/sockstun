@@ -21,14 +21,22 @@ jobs:
         run: |
           sudo apt-get update -y && sudo apt-get install -y wget unzip file git openjdk-17-jdk
           git submodule foreach git submodule update --init
+
+          # 下载并解压 commandlinetools
           wget https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
-          mkdir -p sdk/cmdline-tools
-          unzip -d sdk/cmdline-tools commandlinetools-linux-13114758_latest.zip
+          mkdir -p sdk/cmdline-tools/latest
+          unzip -q commandlinetools-linux-13114758_latest.zip -d sdk/cmdline-tools/temp
+          mv sdk/cmdline-tools/temp/cmdline-tools/* sdk/cmdline-tools/latest/
+          rm -rf sdk/cmdline-tools/temp
+
           export ANDROID_HOME=$PWD/sdk
           export ANDROID_SDK_ROOT=$PWD/sdk
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          yes | sdk/cmdline-tools/bin/sdkmanager --sdk_root=$PWD/sdk --licenses
-          sdk/cmdline-tools/bin/sdkmanager --sdk_root=$PWD/sdk "ndk;25.2.9519653"
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+          # 接受许可证并安装 NDK
+          yes | sdkmanager --sdk_root=$PWD/sdk --licenses
+          sdkmanager --sdk_root=$PWD/sdk "ndk;25.2.9519653"
 
       - name: Clean old builds
         run: |
@@ -41,7 +49,8 @@ jobs:
           cd jni
           $NDK_HOME/ndk-build NDK_APPLICATION_MK=Application.mk APP_BUILD_SCRIPT=Android.mk
           cd ..
-          # 拷贝 so 到输出目录
+          
+          # 拷贝 .so 到输出目录
           mkdir -p output_so
           cp jni/libs/armeabi-v7a/*.so output_so/
 
