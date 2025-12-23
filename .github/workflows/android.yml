@@ -46,10 +46,11 @@ jobs:
       - name: Build .so
         run: |
           export NDK_HOME=$PWD/sdk/ndk/25.2.9519653
-          cd jni
-          $NDK_HOME/ndk-build NDK_APPLICATION_MK=Application.mk APP_BUILD_SCRIPT=Android.mk
-          cd ..
-          
+          $NDK_HOME/ndk-build \
+            NDK_PROJECT_PATH=$PWD/jni \
+            NDK_APPLICATION_MK=$PWD/jni/Application.mk \
+            APP_BUILD_SCRIPT=$PWD/jni/Android.mk
+
           # 拷贝 .so 到输出目录
           mkdir -p output_so
           cp jni/libs/armeabi-v7a/*.so output_so/
