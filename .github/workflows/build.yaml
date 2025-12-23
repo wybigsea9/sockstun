@@ -38,16 +38,6 @@ jobs:
         run: |
           # 清理旧的 so
           rm -rf app/src/main/jniLibs obj
-          mkdir -p app/src/main/jniLibs/armeabi-v7a
-          
-          # 编译自定义 so
-          export NDK_HOME=$PWD/sdk/ndk/25.2.9519653
-          cd jni
-          $NDK_HOME/ndk-build NDK_APPLICATION_MK=Application.mk APP_BUILD_SCRIPT=Android.mk
-          cd ..
-          
-          # 拷贝 so 到 jniLibs 供 Gradle 打包
-          cp jni/libs/armeabi-v7a/*.so app/src/main/jniLibs/armeabi-v7a/
 
       - name: Build APK
         run: |
