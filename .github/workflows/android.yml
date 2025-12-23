@@ -1,26 +1,54 @@
-name: Android CI
+name: "Build SO Only"
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build:
-
+  build_so:
+    name: Build Native Libraries
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
+      - name: Setup Android SDK & NDK
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y wget unzip file git openjdk-17-jdk
+          git submodule foreach git submodule update --init
+          wget https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+          mkdir -p sdk/cmdline-tools
+          unzip -d sdk/cmdline-tools commandlinetools-linux-13114758_latest.zip
+          export ANDROID_HOME=$PWD/sdk
+          export ANDROID_SDK_ROOT=$PWD/sdk
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          yes | sdk/cmdline-tools/bin/sdkmanager --sdk_root=$PWD/sdk --licenses
+          sdk/cmdline-tools/bin/sdkmanager --sdk_root=$PWD/sdk "ndk;25.2.9519653"
+
+      - name: Clean old builds
+        run: |
+          rm -rf jni/libs obj
+          mkdir -p jni/libs/armeabi-v7a
+
+      - name: Build .so
+        run: |
+          export NDK_HOME=$PWD/sdk/ndk/25.2.9519653
+          cd jni
+          $NDK_HOME/ndk-build NDK_APPLICATION_MK=Application.mk APP_BUILD_SCRIPT=Android.mk
+          cd ..
+          # 拷贝 so 到输出目录
+          mkdir -p output_so
+          cp jni/libs/armeabi-v7a/*.so output_so/
+
+      - name: Upload .so artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-libs
+          path: output_so/
+          if-no-files-found: error
+          retention-days: 1
